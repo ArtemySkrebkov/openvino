@@ -59,9 +59,9 @@ Available devices:
     Default values for device configuration keys:
         LOG_LEVEL : UNSUPPORTED TYPE
         PERF_COUNT : NO
-        DEVICE_ID : 0-MA2490
+        DEVICE_ID : 0-2490
         VPUX_THROUGHPUT_STREAMS : 2
-        VPUX_PLATFORM : MA2490-A0
+        VPUX_PLATFORM : 2490-A0
         VPUX_NUM_SLICES : 3
 ```
 
