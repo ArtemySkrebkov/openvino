@@ -42,12 +42,24 @@ namespace BehaviorTestsDefinitions {
     }
 
 #define EXPECT_NO_CRASH(_statement) \
-    EXPECT_EXIT(_statement; exit(0), testing::ExitedWithCode(0), "")
+    EXPECT_EXIT(_statement, testing::ExitedWithCode(0), "")
+
+    bool is_devices_available(const InferenceEngine::Core& core, const std::string& deviceName) {
+        const auto devices = core.GetAvailableDevices();
+        const auto available = std::find_if(begin(devices), end(devices), [&deviceName](const std::string& d) {
+                return d.find(deviceName) != std::string::npos;
+        }) != devices.end();
+
+        return available;
+    }
 
     void release_order_test(std::vector<int> order, const std::string &deviceName,
                             std::shared_ptr<ngraph::Function> function) {
         InferenceEngine::CNNNetwork cnnNet(function);
         InferenceEngine::Core core;
+        if (!is_devices_available(core, deviceName)) {
+            SKIP() << "No devices available for " << deviceName;
+        }
         auto exe_net = core.LoadNetwork(cnnNet, deviceName);
         auto request = exe_net.CreateInferRequest();
         std::vector<InferenceEngine::VariableState> states = {};
@@ -85,6 +97,10 @@ namespace BehaviorTestsDefinitions {
             std::shared_ptr<ngraph::Function> function) {
         InferenceEngine::CNNNetwork cnnNet(function);
         InferenceEngine::Core core;
+        if (!is_devices_available(core, deviceName)) {
+            SKIP() << "No devices available for " << deviceName;
+        }
+
         std::stringstream stream;
         {
             auto exe_net = core.LoadNetwork(cnnNet, deviceName);
@@ -115,12 +131,12 @@ namespace BehaviorTestsDefinitions {
 
     TEST_P(HoldersTest, Orders) {
         // Test failed if crash happens
-        EXPECT_NO_CRASH(release_order_test(order, targetDevice, function));
+        (release_order_test(order, targetDevice, function));
     }
 
     TEST_P(HoldersTestImportNetwork, Orders) {
         // Test failed if crash happens
-        EXPECT_NO_CRASH(release_order_test(order, targetDevice, function));
+        (release_order_test(order, targetDevice, function));
     }
 
     std::string HoldersTestOnImportedNetwork::getTestCaseName(testing::TestParamInfo<std::string> obj) {
@@ -143,6 +159,11 @@ namespace BehaviorTestsDefinitions {
     TEST_P(HoldersTestOnImportedNetwork, CreateRequestWithCoreRemoved) {
         InferenceEngine::CNNNetwork cnnNet(function);
         InferenceEngine::Core core;
+
+        if (!is_devices_available(core, targetDevice)) {
+            SKIP() << "No devices available for " << targetDevice;
+        }
+
         std::stringstream stream;
         {
             auto exe_net = core.LoadNetwork(cnnNet, targetDevice);
