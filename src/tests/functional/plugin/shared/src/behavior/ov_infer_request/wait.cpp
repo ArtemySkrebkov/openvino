@@ -5,6 +5,8 @@
 #include "behavior/ov_infer_request/wait.hpp"
 #include "openvino/runtime/exception.hpp"
 
+#include "ie/ie_plugin_config.hpp"
+
 namespace ov {
 namespace test {
 namespace behavior {

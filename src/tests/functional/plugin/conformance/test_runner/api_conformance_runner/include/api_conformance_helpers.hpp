@@ -7,6 +7,8 @@
 #include "conformance.hpp"
 #include "common_test_utils/test_constants.hpp"
 
+#include "ie/ie_plugin_config.hpp"
+
 namespace ov {
 namespace test {
 namespace conformance {

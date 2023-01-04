@@ -21,7 +21,6 @@
 #include "common_test_utils/crash_handler.hpp"
 #include "common_test_utils/file_utils.hpp"
 
-#include "functional_test_utils/plugin_cache.hpp"
 #include "functional_test_utils/ov_plugin_cache.hpp"
 #include "functional_test_utils/skip_tests_config.hpp"
 #include "functional_test_utils/blob_utils.hpp"
@@ -150,7 +149,7 @@ public:
 
     void TearDown() override {
         if (!configuration.empty()) {
-            PluginCache::get().reset();
+            utils::PluginCache::get().reset();
         }
         APIBaseTest::TearDown();
     }
@@ -219,7 +218,7 @@ public:
         APIBaseTest::SetUp();
         // TODO: Remove it after fixing issue 69529
         // w/a for myriad (cann't store 2 caches simultaneously)
-        PluginCache::get().reset();
+        utils::PluginCache::get().reset();
         OVClassNetworkTest::SetUp();
     }
 };
@@ -234,7 +233,7 @@ public:
         APIBaseTest::SetUp();
         // TODO: Remove it after fixing issue 69529
         // w/a for myriad (cann't store 2 caches simultaneously)
-        PluginCache::get().reset();
+        utils::PluginCache::get().reset();
         OVClassNetworkTest::SetUp();
     }
 };

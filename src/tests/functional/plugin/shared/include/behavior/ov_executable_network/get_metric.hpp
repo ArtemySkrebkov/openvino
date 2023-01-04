@@ -8,6 +8,8 @@
 
 #include <base/ov_behavior_test_utils.hpp>
 
+#include <ie/ie_plugin_config.hpp>
+
 #ifdef OPENVINO_ENABLE_UNICODE_PATH_SUPPORT
 #    include <iostream>
 #    define GTEST_COUT std::cerr << "[          ] [ INFO ] "
