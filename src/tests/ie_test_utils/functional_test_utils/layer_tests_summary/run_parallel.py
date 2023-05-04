@@ -19,6 +19,7 @@ import threading
 import csv
 import datetime
 import shlex
+import time
 
 if sys.version_info.major >= 3:
     import _thread as thread
@@ -169,6 +170,11 @@ class TaskManager:
         args = self._command_list[self._idx].replace(self._device, device)
         if not constants.IS_WIN:
             args = shlex.split(args)
+        if self._idx % 200 == 0:
+            Popen(["C:\\Users\\temp\\vpudriver-31.0.100.615-RelWithDebInfo\\scripts\\vpudriverpnp.bat"], ["disable_device"], shell=constants.IS_WIN)
+            time.sleep(5)
+            Popen(["C:\\Users\\temp\\vpudriver-31.0.100.615-RelWithDebInfo\\scripts\\vpudriverpnp.bat"], ["enable_device"], shell=constants.IS_WIN)
+
         self._process_list[pid] = Popen(args, shell=constants.IS_WIN, stdout=log_file, stderr=log_file)
 
     def update_worker(self):
