@@ -8,6 +8,8 @@ file(GLOB_RECURSE SOURCES *.cpp *.hpp *.h)
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCES})
 
 add_library(${TARGET_NAME} STATIC ${SOURCES})
+add_library(openvino::npu_level_zero_backend ALIAS ${TARGET_NAME})
+set_target_properties(${TARGET_NAME} PROPERTIES EXPORT_NAME npu_level_zero_backend)
 
 set_target_properties(${TARGET_NAME} PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELEASE ${ENABLE_LTO})
 ov_add_clang_format_target(${TARGET_NAME}_clang FOR_TARGETS ${TARGET_NAME})
@@ -32,9 +34,12 @@ target_link_libraries(${TARGET_NAME}
 # targets install
 #
 ov_install_static_lib(${TARGET_NAME} ${NPU_INTERNAL_COMPONENT})
+ov_developer_package_export_targets(TARGET openvino::npu_level_zero_backend
+                                    INSTALL_INCLUDE_DIRECTORIES
+                                        ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 if(TARGET ze_loader)
-    if(NOT BUILD_SHARED_LIBS)
+    # if(NOT BUILD_SHARED_LIBS)
         # Support link of static runtime in case system does not have ze_loader
         install(TARGETS ze_loader EXPORT OpenVINOTargets
             RUNTIME DESTINATION ${OV_CPACK_RUNTIMEDIR} COMPONENT ${NPU_PLUGIN_COMPONENT}
@@ -52,7 +57,7 @@ if(TARGET ze_loader)
 
         export(TARGETS utils NAMESPACE openvino::
             APPEND FILE "${CMAKE_BINARY_DIR}/OpenVINOTargets.cmake")
-    endif()
+        #endif()
 
     # Support tests to run with ze_loader
     install(TARGETS ze_loader

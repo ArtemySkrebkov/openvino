@@ -107,10 +107,10 @@ endif()
 
 # Optional OpenCV dependency
 
-find_package(OpenCV QUIET COMPONENTS core)
-if(NOT OpenCV_FOUND OR NOT OpenCV_VERSION VERSION_GREATER_EQUAL 3)
-    message(WARNING "OpenCV ver. 3.0+ is not found, ${TARGET_NAME} will be built without OpenCV support. Set OpenCV_DIR")
-else()
-    target_compile_definitions(${TARGET_NAME} PRIVATE USE_OPENCV)
-    target_link_libraries(${TARGET_NAME} PRIVATE opencv_core)
-endif()
+# find_package(OpenCV QUIET COMPONENTS core)
+# if(NOT OpenCV_FOUND OR NOT OpenCV_VERSION VERSION_GREATER_EQUAL 3)
+#     message(WARNING "OpenCV ver. 3.0+ is not found, ${TARGET_NAME} will be built without OpenCV support. Set OpenCV_DIR")
+# else()
+#     target_compile_definitions(${TARGET_NAME} PRIVATE USE_OPENCV)
+#     target_link_libraries(${TARGET_NAME} PRIVATE opencv_core)
+# endif()

@@ -7,6 +7,8 @@ set(TARGET_NAME openvino_npu_zero_result_parser)
 file(GLOB_RECURSE SOURCES *.cpp)
 
 add_library(${TARGET_NAME} STATIC ${SOURCES})
+add_library(openvino::npu_zero_result_parser ALIAS ${TARGET_NAME})
+set_target_properties(${TARGET_NAME} PROPERTIES EXPORT_NAME npu_zero_result_parser)
 set_target_properties(
   ${TARGET_NAME} PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELEASE ${ENABLE_LTO})
 ov_add_clang_format_target(${TARGET_NAME}_clang FOR_TARGETS ${TARGET_NAME})
@@ -26,3 +28,6 @@ target_link_libraries(
 # targets install
 #
 ov_install_static_lib(${TARGET_NAME} ${NPU_INTERNAL_COMPONENT})
+ov_developer_package_export_targets(TARGET openvino::npu_zero_result_parser
+                                    INSTALL_INCLUDE_DIRECTORIES
+                                        ${CMAKE_CURRENT_SOURCE_DIR}/include)
