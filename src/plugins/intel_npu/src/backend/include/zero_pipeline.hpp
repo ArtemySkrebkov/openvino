@@ -9,6 +9,7 @@
 #include "intel_npu/utils/zero/zero_wrappers.hpp"
 #include "zero_memory.hpp"
 #include "zero_profiling.hpp"
+#include <mlir/ExecutionEngine/MemRefUtils.h>
 
 namespace intel_npu {
 
@@ -36,6 +37,8 @@ public:
     virtual ~Pipeline() = default;
 
     void push();
+    void push(std::vector<std::unique_ptr<mlir::OwningMemRef<float, 4>>>& inputs,
+            std::vector<std::unique_ptr<mlir::OwningMemRef<float, 4>>>& outputs);
     void pull();
     void reset() const;
 
@@ -52,6 +55,8 @@ protected:
     bool sync_output_with_fences_ = true;
     std::shared_ptr<zeroProfiling::NpuInferProfiling> _npu_profiling;
     Logger _logger;
+    std::shared_ptr<IGraph> _graph;
+    std::shared_ptr<ZeroInitStructsHolder> _initStructs;
 };
 
 }  // namespace intel_npu

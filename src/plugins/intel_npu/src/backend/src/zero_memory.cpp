@@ -27,11 +27,7 @@ void* HostMemAllocator::allocate(const size_t bytes, const size_t /*alignment*/)
 }
 bool HostMemAllocator::deallocate(void* handle, const size_t /* bytes */, size_t /* alignment */) noexcept {
     auto result = zeMemFree(_initStructs->getContext(), handle);
-    if (ZE_RESULT_SUCCESS != result) {
-        return false;
-    }
-
-    return true;
+    return ZE_RESULT_SUCCESS == result;
 }
 bool HostMemAllocator::is_equal(const HostMemAllocator& other) const {
     return (_initStructs == other._initStructs) && (_flag == other._flag);

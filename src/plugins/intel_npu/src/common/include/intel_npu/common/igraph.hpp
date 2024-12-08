@@ -12,6 +12,7 @@
 #include "intel_npu/utils/zero/zero_utils.hpp"
 #include "intel_npu/utils/zero/zero_wrappers.hpp"
 #include "openvino/runtime/profiling_info.hpp"
+#include "mlir/ExecutionEngine/ExecutionEngine.h"
 
 namespace intel_npu {
 
@@ -24,6 +25,8 @@ public:
             _blob = std::move(*blob);
         }
     }
+
+    IGraph() = default;
 
     virtual void export_blob(std::ostream& stream) const = 0;
 
@@ -98,6 +101,8 @@ protected:
     std::mutex _mutex;
 
     std::vector<uint8_t> _blob;
+public:
+    std::unique_ptr<mlir::ExecutionEngine> _engine;
 };
 
 }  // namespace intel_npu

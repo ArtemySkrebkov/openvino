@@ -98,8 +98,8 @@ private:
     mutable std::vector<std::optional<TensorData>> _outputTensorsData;
 
     ze_device_properties_t _properties = {};
-    std::shared_ptr<const zeroMemory::HostMemAllocator> _inputAllocator;
-    std::shared_ptr<const zeroMemory::HostMemAllocator> _outputAllocator;
+    std::shared_ptr<zeroMemory::HostMemAllocator> _inputAllocator;
+    std::shared_ptr<zeroMemory::HostMemAllocator> _outputAllocator;
 
     zeroProfiling::ProfilingPool _profilingPool;
     zeroProfiling::ProfilingQuery _profilingQuery;
