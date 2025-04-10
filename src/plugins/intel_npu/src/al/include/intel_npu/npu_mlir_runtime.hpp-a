@@ -26,18 +26,6 @@ extern "C" {
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief Supported versions
-///
-/// @details
-///     - Graph extension versions contain major and minor attributes, use
-///       ::NPU_MLIR_RUNTIME_MAJOR_VERSION and ::NPU_MLIR_RUNTIME_MINOR_VERSION
-typedef enum _npu_mlir_runtime_version_t {
-    NPU_MLIR_RUNTIME_VERSION_1_0 = ZE_MAKE_VERSION(1, 0),             ///< version 1.0
-    NPU_MLIR_RUNTIME_VERSION_CURRENT = NPU_MLIR_RUNTIME_VERSION_1_0,  ///< latest known version
-    NPU_MLIR_RUNTIME_VERSION_FORCE_UINT32 = 0x7fffffff,
-} npu_mlir_runtime_version_t;
-
-///////////////////////////////////////////////////////////////////////////////
 #ifndef NPU_MLIR_RUNTIME_APICALL
 #    if defined(_WIN32)
 /// @brief Calling convention for all API functions
@@ -151,7 +139,7 @@ NPU_MLIR_RUNTIME_APIEXPORT npu_mlir_runtime_result_t NPU_MLIR_RUNTIME_APICALL np
 NPU_MLIR_RUNTIME_APIEXPORT npu_mlir_runtime_result_t NPU_MLIR_RUNTIME_APICALL npuMLIRRuntimeCreate(
     const npu_mlir_runtime_blob_desc_t* desc,   ///< [in] pointer to graph descriptor
     npu_mlir_runtime_handle_t* phRuntime,       ///< [out] pointer to handle of mlir runtime object created
-    npu_mlir_runtime_properties_t* pProperties  ///< [in] pointer to properties of the runtime
+    npu_mlir_runtime_properties_t* pProperties  ///< [out] pointer to properties of the runtime
 );
 
 ///////////////////////////////////////////////////////////////////////////////
