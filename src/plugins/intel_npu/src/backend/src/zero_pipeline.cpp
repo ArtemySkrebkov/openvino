@@ -322,7 +322,7 @@ void Pipeline::update_graph_arguments(uint32_t arg_index, const void* arg_data, 
     for (size_t i = 0; i < number_of_command_lists; i++) {
         _command_lists.at(i)->updateMutableCommandList(
             arg_index,
-            static_cast<const unsigned char*>(arg_data) + (i * byte_size) / number_of_command_lists, strides);
+            static_cast<const unsigned char*>(arg_data) + (i * byte_size) / number_of_command_lists, std::make_optional(strides));
     }
 };
 
