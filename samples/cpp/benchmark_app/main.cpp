@@ -1350,6 +1350,7 @@ int main(int argc, char* argv[]) {
                     for (size_t x = 0; x < std::min(outputTensor.get_size(), static_cast<size_t>(10)) && !skipDump;
                          x++) {
 #    endif
+                        #if 0
                         if((x % ((transpose)? 16: 2560)) == 0 )
                         {
                             if (transpose == true) {
@@ -1364,6 +1365,8 @@ int main(int argc, char* argv[]) {
                                 o << "OUTPUT: " << z << ","  << y << ": ";
                             }
                         }
+                        #endif
+
                         switch (outputTensor.get_element_type()) {
                         case ov::element::f16:
                             o << outputTensor.data<ov::float16>()[x] << " ";
@@ -1383,15 +1386,7 @@ int main(int argc, char* argv[]) {
                         default:
                             o << "Tensor element type " << outputTensor.get_element_type().to_string()
                                       << " not support dump" << std::endl;
-                        }
-
-                        if (transpose == true) {
-                            if( ((x + 1) % 16) == 0) o << std::endl;
-                        }
-                        else {
-                            if( ((x + 1) % 2560) == 0) o << std::endl;
-                        }
-                             
+                        }    
                     }
 
                     o.flush();
@@ -1400,7 +1395,6 @@ int main(int argc, char* argv[]) {
                     o2.close();
                 }
                 
-
                 size_t inputCount = compiledModel.inputs().size();
                 for (size_t k = 0; k < inputCount && !skipDump; k++) {
                     auto inputTensor = inferRequestsQueue.requests[i]->get_input_tensor(k);
@@ -1440,6 +1434,42 @@ int main(int argc, char* argv[]) {
                         }
                     }
                     std::cout << std::endl;
+
+
+                     std::ostringstream oss;
+                    oss << "input_" << k << ".txt";
+                    std::ofstream o(oss.str().c_str());
+
+#ifdef _WIN32
+                    for (size_t y = 0; y < inputTensor.get_size() && !skipDump; y++) {
+#else
+                    for (size_t y = 0; y < std::min(inputTensor.get_size(), static_cast<size_t>(10)) && !skipDump;
+                         y++) {
+#endif
+                        switch (inputTensor.get_element_type()) {
+                        case ov::element::f16:
+                            o << inputTensor.data<ov::float16>()[y] << " ";
+                            break;
+                        case ov::element::f32:
+                            o << inputTensor.data<float>()[y] << " ";
+                            break;
+                        case ov::element::i8:
+                            o << inputTensor.data<uint8_t>()[y] << " ";
+                            break;
+                        case ov::element::i32:
+                            o << inputTensor.data<uint32_t>()[y] << " ";
+                            break;
+                        case ov::element::i64:
+                            o << inputTensor.data<uint64_t>()[y] << " ";
+                            break;
+                        default:
+                            std::cout << "Tensor element type " << inputTensor.get_element_type().to_string()
+                                      << " not support dump" << std::endl;
+                            skipDump = true;
+                        }
+                    }
+                    o.flush();
+                    o.close();
                 }
             }
         }
