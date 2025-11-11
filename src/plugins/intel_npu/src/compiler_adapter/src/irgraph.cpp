@@ -371,7 +371,7 @@ void IRGraphImpl::setArgumentProperty(uint32_t argi,
         }
 
         // Need stride based on element but not byte
-        inputs[argi]->updateStride();
+        //inputs[argi]->updateStride();
         //oss.clear();
         //oss.str("");
         //oss << *(inputs[argi]);
@@ -409,7 +409,7 @@ void IRGraphImpl::setArgumentProperty(uint32_t argi,
             }
 
             // Need stride based on element but not byte
-            outputs[idx]->updateStride();
+            //outputs[idx]->updateStride();
 
             //oss.clear();
             //oss.str("");
@@ -479,6 +479,12 @@ void IRGraphImpl::executeGraph(std::vector<MemRefType*>& inputMefRefs,
     auto ddiTableHandle = zeroInitStruct->getGraphDdiTable().getImpl();
     const std::string adapterName = "_mlir_ciface_main";
 
+    for (auto memRef : inputMefRefs) {
+        std::cout << "Input MemRef: " << *memRef << std::endl;
+    }
+    for (auto memRef : outputMemRefs) {
+        std::cout << "Output MemRef: " << *memRef << std::endl;
+    }
     auto error = invokePacked(_engine,
                               adapterName,
                               inputMefRefs,
