@@ -11,7 +11,6 @@
 #include "intel_npu/common/itt.hpp"
 #include "intel_npu/config/options.hpp"
 #include "intel_npu/utils/logger/logger.hpp"
-#include "ir_serializer.hpp"
 #include "irgraph.hpp"
 #include "mem_usage.hpp"
 #include "openvino/core/model.hpp"
