@@ -166,20 +166,15 @@ public:
     void push();
     void pull();
     void reset() const;
-    void update_graph_arguments(uint32_t arg_index,
-                                const void* arg_data,
-                                size_t byte_size,
-                                [[maybe_unused]] const ov::Strides& strides,
-                                [[maybe_unused]] const ov::Shape& shapes);
-    void update_graph_arguments_batching(uint32_t arg_index,
-                                         const void* arg_data,
-                                         [[maybe_unused]] const ov::Strides& strides,
-                                         [[maybe_unused]] const ov::Shape& shapes,
-                                         size_t batch_index);
 
-    virtual std::vector<ov::ProfilingInfo> get_profiling_info() const;
+    void update_graph_arguments(uint32_t index, const std::shared_ptr<ZeroTensor>& tensor);
+    void update_graph_arguments(uint32_t index, const std::shared_ptr<ZeroTensor>& tensor, size_t command_list_index);
+
+    std::vector<ov::ProfilingInfo> get_profiling_info() const;
 
 protected:
+    std::vector<size_t> get_strides(const std::vector<size_t>& strides_in_bytes, size_t element_size) const;
+
     std::shared_ptr<ZeroInitStructsHolder> _init_structs;
     std::shared_ptr<IGraph> _graph;
     const Config _config;

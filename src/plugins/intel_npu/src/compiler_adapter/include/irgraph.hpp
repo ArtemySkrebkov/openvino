@@ -62,9 +62,7 @@ public:
 
     public:
         virtual void initialize(std::optional<ov::Tensor>& blob,
-                                NetworkMetadata& metadata,
-                                std::vector<ArgumentDescriptor>& inputs,
-                                std::vector<ArgumentDescriptor>& outputs) = 0;
+                                NetworkMetadata& metadata) = 0;
         virtual void setArgumentValue(uint32_t argi, const void* argv) = 0;
         virtual void setArgumentProperty(uint32_t argi,
                                          const void* argv,
@@ -96,7 +94,7 @@ public:
     std::vector<ov::ProfilingInfo> process_profiling_output(const std::vector<uint8_t>& profData,
                                                             const Config& config) const override;
 
-    void set_argument_value(uint32_t argi, const void* argv) const override;
+    void set_argument_value(uint32_t argi, const void* argv, const std::vector<size_t>& strides = {}, const std::vector<size_t>& sizes = {}) const override;
     ze_graph_handle_t get_handle() const override;
     BlobType get_blob_type() override {
         return BlobType::LLVM;
@@ -114,8 +112,6 @@ public:
 
     void update_network_name(std::string_view name) override;
 
-    const std::vector<ArgumentDescriptor>& get_input_descriptors() const override;
-    const std::vector<ArgumentDescriptor>& get_output_descriptors() const override;
     const std::shared_ptr<CommandQueue>& get_command_queue() const override;
     uint32_t get_command_queue_group_ordinal() const override;
 
@@ -159,9 +155,6 @@ private:
      * @note the number of subgraphs will be one for static models
      */
     uint64_t _num_of_subgraphs = 1;
-
-    std::vector<ArgumentDescriptor> _inputDescriptors;
-    std::vector<ArgumentDescriptor> _outputDescriptors;
 
     std::shared_ptr<CommandQueue> _commandQueue;
     uint32_t _commandQueueGroupOrdinal = 0;

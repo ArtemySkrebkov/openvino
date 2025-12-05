@@ -13,7 +13,7 @@
 #include "openvino/runtime/make_tensor.hpp"
 #include "openvino/runtime/properties.hpp"
 #include "openvino/runtime/tensor.hpp"
-
+#include "intel_npu/utils/zero/zero_utils.hpp"
 namespace {
 bool is_pointer_representable(const ov::element::Type& tensor_type, const ov::element::Type& type) {
     if (type == ov::element::dynamic) {

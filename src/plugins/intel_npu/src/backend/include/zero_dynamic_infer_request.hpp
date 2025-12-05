@@ -55,6 +55,10 @@ private:
                                                 const bool isInput,
                                                 const std::optional<std::size_t> batchSize = std::nullopt) const;
 
+    std::shared_ptr<ZeroTensor> allocate_tensor(const size_t index,
+                                                const bool isInput,
+                                                const std::optional<std::size_t> batchSize = std::nullopt) const;
+
     void add_state(const IODescriptor& descriptor, size_t tensorIndex) const;
 
     void update_pipeline_if_memory_changed();
@@ -74,15 +78,17 @@ private:
         const bool isInput,
         const std::optional<std::size_t> batchSize = std::nullopt) const;
 
+    std::shared_ptr<ZeroTensor> allocate_tensor_for_pipeline(
+        const size_t index,
+        const bool isInput,
+        const std::optional<std::size_t> batchSize = std::nullopt) const;
+
     IODescriptor prepare_io_descriptor_with_user_info(const IODescriptor& descriptor, bool isInput);
 
     const std::shared_ptr<ZeroInitStructsHolder> _initStructs;
     const std::shared_ptr<IGraph> _graph;
     const Config _config;
     Logger _logger;
-
-    const std::vector<ArgumentDescriptor>& _graphInputDescriptors;
-    const std::vector<ArgumentDescriptor>& _graphOutputDescriptors;
 
     // A copy of each tensor is needed to maintain the original L0 memory allocation in case the user provides another
     // memory area for the tensor.

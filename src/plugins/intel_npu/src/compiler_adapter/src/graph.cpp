@@ -149,7 +149,7 @@ std::vector<ov::ProfilingInfo> Graph::process_profiling_output(const std::vector
     return _compiler->process_profiling_output(profData, blob, config);
 }
 
-void Graph::set_argument_value(uint32_t id, const void* data, const std::vector<size_t>& strides) const {
+void Graph::set_argument_value(uint32_t id, const void* data, const std::vector<size_t>& strides, const std::vector<size_t>& sizes) const {
     if (_zeGraphExt == nullptr) {
         OPENVINO_THROW("Zero compiler adapter wasn't initialized");
     }

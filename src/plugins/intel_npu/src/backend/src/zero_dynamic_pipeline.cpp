@@ -104,8 +104,8 @@ _levelZeroOutputTensors(output_tensors)*/
     for (size_t i = 0; i < _number_of_command_lists; i++) {
         _logger.debug("DynamicPipeline - set args for command list number: %zu", i);
         size_t io_index = 0;
-        for (const auto& desc : graph->get_input_descriptors()) {
-            // if (isMainInputWeightsName(desc.info.name)) {
+        for (const auto& desc : graph->get_metadata().inputs) {
+            // if (desc.isMainInputWeights) {
             //     // These values were set while running the "WeightlessGraph::init" method
             //     continue;
             // }
@@ -113,45 +113,63 @@ _levelZeroOutputTensors(output_tensors)*/
             if (input_tensors.at(io_index).size() > 1) {
                 _logger.debug("DynamicPipeline - set args for input index: %zu", io_index);
 
-                irGraph->set_argument_property(desc.idx,
-                                               input_tensors.at(io_index).at(i)->data(),
-                                               input_tensors.at(io_index).at(i)->get_strides(),
-                                               input_tensors.at(io_index).at(i)->get_shape());
-
+                const auto& tensor = input_tensors.at(io_index).at(i);
+                if (tensor->get_element_type().bitwidth() < 8 || tensor->is_continuous() ||
+                    tensor->get_strides().empty()) {
+                    graph->set_argument_value(desc.indexUsedByDriver, tensor->data());
+                } else {
+                graph->set_argument_value(desc.indexUsedByDriver,
+                                            tensor->data(),
+                                            get_strides(tensor->get_strides(), tensor->get_element_type().size()),
+                                            tensor->get_shape());
+                }
                 ++io_index;
                 continue;
             }
 
-            _logger.debug(" update tensor property for input desc index: %d", desc.idx);
-            irGraph->set_argument_property(
-                desc.idx,
-                static_cast<unsigned char*>(input_tensors.at(io_index).at(0)->data()) +
-                    (i * input_tensors.at(io_index).at(0)->get_byte_size()) / _number_of_command_lists,
-                input_tensors.at(io_index).at(0)->get_strides(),
-                input_tensors.at(io_index).at(0)->get_shape());
+            const auto& tensor = input_tensors.at(io_index).at(0);
+            if (tensor->get_element_type().bitwidth() < 8 || tensor->is_continuous() || tensor->get_strides().empty()) {
+                graph->set_argument_value(desc.indexUsedByDriver,
+                                          static_cast<unsigned char*>(tensor->data()) +
+                                              (i * tensor->get_byte_size()) / _number_of_command_lists,
+                                          get_strides(tensor->get_strides(), tensor->get_element_type().size()),
+                                          tensor->get_shape());
+            } else {
+                graph->set_argument_value(desc.indexUsedByDriver,
+                                          static_cast<unsigned char*>(tensor->data()) + (i * tensor->get_strides()[0]),
+                                          get_strides(tensor->get_strides(), tensor->get_element_type().size()),
+                                          tensor->get_shape());
+            }
 
             ++io_index;
         }
 
         io_index = 0;
-        for (const auto& desc : graph->get_output_descriptors()) {
-            _logger.debug("DynamicPipeline - update tensor property for output desc index: %d", desc.idx);
-            irGraph->set_argument_property(
-                desc.idx,
-                static_cast<unsigned char*>(output_tensors.at(io_index)->data()) +
-                    (i * output_tensors.at(io_index)->get_byte_size()) / _number_of_command_lists,
-                output_tensors.at(io_index)->get_strides(),
-                output_tensors.at(io_index)->get_shape());
+        for (const auto& desc : _graph->get_metadata().outputs) {
+            const auto& tensor = output_tensors.at(io_index);
+            if (tensor->get_element_type().bitwidth() < 8 || tensor->is_continuous() || tensor->get_strides().empty()) {
+                graph->set_argument_value(desc.indexUsedByDriver,
+                                          static_cast<unsigned char*>(tensor->data()) +
+                                          (i * tensor->get_byte_size()) / _number_of_command_lists,
+                                          get_strides(tensor->get_strides(), tensor->get_element_type().size()),
+                                          tensor->get_shape()); 
+            } else {
+                graph->set_argument_value(desc.indexUsedByDriver,
+                                          static_cast<unsigned char*>(tensor->data()) + (i * tensor->get_strides()[0]),
+                                          get_strides(tensor->get_strides(), tensor->get_element_type().size()),
+                                          tensor->get_shape());
+            }
 
             ++io_index;
         }
 
-        if (_init_structs->getCommandQueueDdiTable().version() < ZE_MAKE_VERSION(1, 1) &&
-            _config.get<RUN_INFERENCES_SEQUENTIALLY>()) {
-            if (_graph->get_last_submitted_event(i)) {
-                _command_lists.at(i)->appendWaitOnEvent(_graph->get_last_submitted_event(i));
-            }
-        }
+        // TODO
+        //if (_init_structs->getCommandQueueDdiTable().version() < ZE_MAKE_VERSION(1, 1) &&
+        //    _config.get<RUN_INFERENCES_SEQUENTIALLY>()) {
+        //    if (_graph->get_last_submitted_event(i)) {
+        //        _graph->get_last_submitted_event(i)->AppendWaitOnEvent(*_command_lists.at(i));
+        //    }
+        //}
 
         /// TODO, profiling needs to add timestamp before and after graph execute, but the execute is added inside blob
         /// now
@@ -307,43 +325,50 @@ void DynamicPipeline::reset() const {
     _logger.debug("Pipeline - rest() completed");
 };
 
-void DynamicPipeline::update_graph_arguments(uint32_t arg_index,
-                                             const void* arg_data,
-                                             size_t byte_size,
-                                             [[maybe_unused]] const ov::Strides& strides,
-                                             [[maybe_unused]] const ov::Shape& shapes) {
+void DynamicPipeline::update_graph_arguments(uint32_t index, const std::shared_ptr<ZeroTensor>& tensor) {
     OV_ITT_TASK_CHAIN(ZERO_EXECUTOR_IP_UMCL, itt::domains::LevelZeroBackend, "DynamicPipeline", "updateCommandList");
     _logger.debug("DynamicPipeline - updateCommandList");
 
     const size_t number_of_command_lists = _command_lists.size();
 
     for (size_t i = 0; i < number_of_command_lists; i++) {
-        _command_lists.at(i)->updateMutableCommandList(
-            arg_index,
-            static_cast<const unsigned char*>(arg_data) + (i * byte_size) / number_of_command_lists,
-            strides,
-            shapes);
+        if (tensor->get_element_type().bitwidth() < 8 || tensor->is_continuous() || tensor->get_strides().empty()) {
+            _command_lists.at(i)->updateMutableCommandList(index,
+                                                           static_cast<const unsigned char*>(tensor->data()) +
+                                                               (i * tensor->get_byte_size()) / number_of_command_lists,
+                get_strides(tensor->get_strides(), tensor->get_element_type().size()), tensor->get_shape());
+        } else {
+            _command_lists.at(i)->updateMutableCommandList(
+                index,
+                static_cast<const unsigned char*>(tensor->data()) + (i * tensor->get_strides()[0]),
+                get_strides(tensor->get_strides(), tensor->get_element_type().size()), tensor->get_shape());
+        }
     }
 };
 
-void DynamicPipeline::update_graph_arguments_batching(uint32_t arg_index,
-                                                      const void* arg_data,
-                                                      [[maybe_unused]] const ov::Strides& strides,
-                                                      [[maybe_unused]] const ov::Shape& shapes,
-                                                      size_t batch_index) {
-    OV_ITT_TASK_CHAIN(ZERO_EXECUTOR_IP_UMCL,
-                      itt::domains::LevelZeroBackend,
-                      "DynamicPipeline",
-                      "updateCommandListIndex");
-    _logger.debug("DynamicPipeline - updateCommandListIndex");
+void DynamicPipeline::update_graph_arguments(uint32_t index,
+                                      const std::shared_ptr<ZeroTensor>& tensor,
+                                      size_t command_list_index) {
+    OV_ITT_TASK_CHAIN(ZERO_EXECUTOR_IP_UMCL, itt::domains::LevelZeroBackend, "Pipeline", "updateCommandListIndex");
+    _logger.debug("Pipeline - updateCommandListIndex");
 
     const size_t number_of_command_lists = _command_lists.size();
 
-    OPENVINO_ASSERT(batch_index < number_of_command_lists,
-                    "batch_index is higher than the number of Command lists ",
-                    batch_index);
+    OPENVINO_ASSERT(command_list_index < number_of_command_lists,
+                    "Command list index is higher than the number of Command lists ",
+                    command_list_index);
 
-    _command_lists.at(batch_index)->updateMutableCommandList(arg_index, arg_data, strides, shapes);
+    if (tensor->get_element_type().bitwidth() < 8 || tensor->is_continuous() || tensor->get_strides().empty()) {
+        _command_lists.at(command_list_index)->updateMutableCommandList(index, tensor->data(),
+            get_strides(tensor->get_strides(), tensor->get_element_type().size()),
+            tensor->get_shape());
+    } else {
+        _command_lists.at(command_list_index)
+            ->updateMutableCommandList(index,
+                                       tensor->data(),
+                                       get_strides(tensor->get_strides(), tensor->get_element_type().size()),
+                                       tensor->get_shape());
+    }
 };
 
 std::vector<ov::ProfilingInfo> DynamicPipeline::get_profiling_info() const {
@@ -369,6 +394,26 @@ std::vector<ov::ProfilingInfo> DynamicPipeline::get_profiling_info() const {
     //     return _profiling_query->getLayerStatistics();
     // }
 }
+
+std::vector<size_t> DynamicPipeline::get_strides(const std::vector<size_t>& strides_in_bytes, size_t element_size) const {
+    std::vector<size_t> element_strides(strides_in_bytes.size());
+    // reorder strides will be done in level_zero_wrapper
+    std::transform(strides_in_bytes.begin(),
+                   strides_in_bytes.end(),
+                   element_strides.begin(),
+                   [element_size](size_t byte_stride) {
+                       OPENVINO_ASSERT(byte_stride % element_size == 0,
+                                       "Stride ",
+                                       byte_stride,
+                                       " bytes is not aligned to element size ",
+                                       element_size,
+                                       " bytes. Strides must be multiples of element size.");
+
+                       return byte_stride / element_size;
+                   });
+
+    return element_strides;
+};
 
 }  // namespace intel_npu
 

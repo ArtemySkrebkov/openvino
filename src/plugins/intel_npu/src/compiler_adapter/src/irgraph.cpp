@@ -96,17 +96,11 @@ public:
 public:
     IRGraphImpl() : _logger("IRGraphImpl", Logger::global().level()) {}
     void initialize(std::optional<ov::Tensor>& blob,
-                    NetworkMetadata& metadata,
-                    std::vector<ArgumentDescriptor>& inputs,
-                    std::vector<ArgumentDescriptor>& outputs) override;
+                    NetworkMetadata& metadata) override;
     void createExecutionEngine(std::optional<ov::Tensor>& blob);
-    void prepareMetadata(NetworkMetadata& metadata,
-                         std::vector<ArgumentDescriptor>& inputs,
-                         std::vector<ArgumentDescriptor>& outputs);
+    void prepareMetadata(NetworkMetadata& metadata);
     void initializeIRGraphExecution(std::optional<ov::Tensor>& blob,
-                                    NetworkMetadata& metadata,
-                                    std::vector<ArgumentDescriptor>& inputs,
-                                    std::vector<ArgumentDescriptor>& outputs);
+                                    NetworkMetadata& metadata);
     void setArgumentValue(uint32_t argi, const void* argv) override;
     void setArgumentProperty(uint32_t argi,
                              const void* argv,
@@ -147,15 +141,13 @@ public:
 bool IRGraphImpl::_initializedMLIR = false;
 
 void IRGraphImpl::initialize(std::optional<ov::Tensor>& blob,
-                             NetworkMetadata& metadata,
-                             std::vector<ArgumentDescriptor>& arg_inputs,
-                             std::vector<ArgumentDescriptor>& arg_outputs) {
+                             NetworkMetadata& metadata) {
     if (!_initializedMLIR) {
-        initializeIRGraphExecution(blob, metadata, arg_inputs, arg_outputs);
+        initializeIRGraphExecution(blob, metadata);
         _initializedMLIR = true;
     }
 
-    _binding._inputs.resize(arg_inputs.size());
+    _binding._inputs.resize(metadata.inputs.size());
 
     // dump output of _metadata
     _logger.debug("Dump metadata info from blob");
@@ -189,7 +181,7 @@ void IRGraphImpl::initialize(std::optional<ov::Tensor>& blob,
     }
 
     _logger.debug("Outputs:");
-    _binding._outputs.resize(arg_outputs.size());
+    _binding._outputs.resize(metadata.outputs.size());
     auto& outputs = _binding._outputs;
     for (size_t i = 0; i < outputs.size(); ++i) {
         outputs[i] = new MemRefType();
@@ -221,7 +213,8 @@ void IRGraphImpl::createExecutionEngine(std::optional<ov::Tensor>& blob) {
  * the referenced attribute.
  * @returns A descriptor object containing the metadata converted in OpenVINO specific structures.
  */
-static IODescriptor getIODescriptor(const ze_graph_argument_properties_3_t& arg,
+static IODescriptor getIODescriptor(const uint32_t indexUsedByDriver,
+                                    const ze_graph_argument_properties_3_t& arg,
                                     const std::optional<ze_graph_argument_metadata_t>& metadata) {
     auto logger = Logger::global().clone("getIODescriptor");
     ov::element::Type_t precision = zeroUtils::toOVElementType(arg.devicePrecision);
@@ -299,12 +292,13 @@ static IODescriptor getIODescriptor(const ze_graph_argument_properties_3_t& arg,
             std::nullopt,
             arg.debug_friendly_name,
             std::move(outputTensorNames),
-            metadata.has_value() ? std::optional(shapeFromIRModel) : std::nullopt};
+            metadata.has_value() ? std::optional(shapeFromIRModel) : std::nullopt,
+            indexUsedByDriver,
+            false
+    };
 }
 
-void IRGraphImpl::prepareMetadata(NetworkMetadata& metadata,
-                                  std::vector<ArgumentDescriptor>& inputs,
-                                  std::vector<ArgumentDescriptor>& outputs) {
+void IRGraphImpl::prepareMetadata(NetworkMetadata& metadata) {
     metadata.inputs.clear();
     metadata.outputs.clear();
     for (uint32_t i = 0; i < _engineProperties.numOfGraphArgs; ++i) {
@@ -318,12 +312,10 @@ void IRGraphImpl::prepareMetadata(NetworkMetadata& metadata,
         }
         switch (arg.type) {
         case ZE_GRAPH_ARGUMENT_TYPE_INPUT: {
-            metadata.inputs.push_back(getIODescriptor(arg, meta));
-            inputs.push_back({arg, i});
+            metadata.inputs.push_back(getIODescriptor(i, arg, meta));
         } break;
         case ZE_GRAPH_ARGUMENT_TYPE_OUTPUT: {
-            metadata.outputs.push_back(getIODescriptor(arg, meta));
-            outputs.push_back({arg, i});
+            metadata.outputs.push_back(getIODescriptor(i, arg, meta));
         } break;
         default: {
             OPENVINO_THROW("Invalid ze_graph_argument_type_t found in ze_graph_argument_properties_3_t object: ",
@@ -339,16 +331,14 @@ void IRGraphImpl::getBinding(IRGraph::GraphArguments& binding) {
 }
 
 void IRGraphImpl::initializeIRGraphExecution(std::optional<ov::Tensor>& blob,
-                                             NetworkMetadata& metadata,
-                                             std::vector<ArgumentDescriptor>& inputs,
-                                             std::vector<ArgumentDescriptor>& outputs) {
+                                             NetworkMetadata& metadata) {
     createExecutionEngine(blob);
-    prepareMetadata(metadata, inputs, outputs);
+    prepareMetadata(metadata);
 
     _logger.debug("num of subgraphs: %d inputs: %d outputs: %d",
                   _engineProperties.numOfSubGraphs,
-                  inputs.size(),
-                  outputs.size());
+                  metadata.inputs.size(),
+                  metadata.outputs.size());
 }
 
 void IRGraphImpl::setArgumentValue(uint32_t argi, const void* argv) {
@@ -400,7 +390,7 @@ void IRGraphImpl::setArgumentProperty(uint32_t argi,
         }
 
         // Need stride based on element but not byte
-        inputs[argi]->updateStride();
+        // inputs[argi]->updateStride();
         oss.clear();
         oss.str("");
         oss << *(inputs[argi]);
@@ -438,7 +428,7 @@ void IRGraphImpl::setArgumentProperty(uint32_t argi,
             }
 
             // Need stride based on element but not byte
-            outputs[idx]->updateStride();
+            // outputs[idx]->updateStride();
 
             oss.clear();
             oss.str("");
@@ -532,7 +522,7 @@ IRGraph::IRGraph(const std::shared_ptr<ZeroInitStructsHolder>& zeroInitStruct,
     _impl = std::make_unique<IRGraphImpl>();
 
     // initialize MLIR execution engine, metadata, input&output descriptors
-    _impl->initialize(_blob, _metadata, _inputDescriptors, _outputDescriptors);
+    _impl->initialize(_blob, _metadata);
 
     _num_of_subgraphs = _impl->getNumSubgraphs();
 
@@ -601,14 +591,6 @@ void IRGraph::update_network_name(std::string_view name) {
     _metadata.name = name;
 }
 
-const std::vector<ArgumentDescriptor>& IRGraph::get_input_descriptors() const {
-    return _inputDescriptors;
-}
-
-const std::vector<ArgumentDescriptor>& IRGraph::get_output_descriptors() const {
-    return _outputDescriptors;
-}
-
 const std::shared_ptr<CommandQueue>& IRGraph::get_command_queue() const {
     return _commandQueue;
 }
@@ -649,30 +631,18 @@ std::vector<ov::ProfilingInfo> IRGraph::process_profiling_output(const std::vect
     return _compiler->process_profiling_output(profData, blob, config);
 }
 
-void IRGraph::set_argument_value(uint32_t argi, const void* argv) const {
-    if (_impl == nullptr) {
-        _logger.warning("Graph handle is null, dynamic pipeline to handle set_argument_value");
-        return;
-    }
-
-    _impl->setArgumentValue(argi, argv);
-}
-
-ze_graph_handle_t IRGraph::get_handle() const {
-    _logger.warning("IRGraph does not support get_handle() method.");
-    return nullptr;
-}
-
-void IRGraph::set_argument_property(uint32_t argi,
-                                    const void* argv,
-                                    const ov::Strides& strides,
-                                    const ov::Shape& shapes) const {
+void IRGraph::set_argument_value(uint32_t argi, const void* argv, const std::vector<size_t>& strides, const std::vector<size_t>& shapes) const {
     if (_impl == nullptr) {
         _logger.warning("Graph handle is null, dynamic pipeline to handle set_argument_value");
         return;
     }
 
     _impl->setArgumentProperty(argi, argv, strides, shapes);
+}
+
+ze_graph_handle_t IRGraph::get_handle() const {
+    _logger.warning("IRGraph does not support get_handle() method.");
+    return nullptr;
 }
 
 void IRGraph::initialize(const Config& config) {
@@ -732,8 +702,9 @@ void IRGraph::initialize(const Config& config) {
         return;
     }
 
-    _inputDescriptors.shrink_to_fit();
-    _outputDescriptors.shrink_to_fit();
+    // TODO: prepare input&output descriptors
+    //_inputDescriptors.shrink_to_fit();
+    //_outputDescriptors.shrink_to_fit();
 
     _commandQueueGroupOrdinal = zeroUtils::findCommandQueueGroupOrdinal(_zeroInitStruct->getDevice(),
                                                                         ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COMPUTE);
@@ -781,6 +752,8 @@ void IRGraph::initialize(const Config& config) {
 
         _lastSubmittedEvent.resize(numberOfCommandLists);
     }
+
+    _init_completed = true;
 }
 
 bool IRGraph::release_blob(const Config& config) {
