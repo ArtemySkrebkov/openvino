@@ -102,12 +102,13 @@ typedef struct _npu_mlir_runtime_properties_t {
     uint32_t numOfGraphArgs;
 } npu_mlir_runtime_properties_t;
 
+
 typedef struct _npu_mlir_runtime_mem_ref_t {
     const void* basePtr;
     const void* data;
     int64_t offset;
-    int64_t sizes[ZE_MAX_GRAPH_ARGUMENT_DIMENSIONS_SIZE];
-    int64_t strides[ZE_MAX_GRAPH_ARGUMENT_DIMENSIONS_SIZE];
+    int64_t sizes[4];
+    int64_t strides[4];
     uint32_t dimsCount;
 } npu_mlir_runtime_mem_ref_t;
 
