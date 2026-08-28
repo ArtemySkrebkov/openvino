@@ -70,19 +70,17 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::compile(const std::shared_ptr<con
     FilteredConfig effectiveConfig = config;
     if (!config.has<COMPILATION_MODE>() &&
         !(config.has<DYNAMIC_SHAPE_TO_STATIC>() && config.get<DYNAMIC_SHAPE_TO_STATIC>())) {
-        const auto isDynamic = [](const auto& port) {
+        const auto isDynamic = [&](const auto& port) {
             auto& shape = port.get_partial_shape();
             return shape.is_dynamic() && (shape.rank().get_length() == 4) && shape[0].is_static();
         };
 
         if (model) {
             const auto& inputs = model->inputs();
-            const auto& outputs = model->outputs();
             const bool inputsDynamic = std::any_of(inputs.begin(), inputs.end(), isDynamic);
-            const bool outputsDynamic = std::any_of(outputs.begin(), outputs.end(), isDynamic);
-            if (inputsDynamic && outputsDynamic) {
+            if (inputsDynamic) {
                 _logger.info("NPU_COMPILATION_MODE not set; selecting 'HostCompile_Interpreter' "
-                             "for fully-dynamic model (inputs and outputs both dynamic)");
+                             "for fully-dynamic model (inputs are dynamic)");
                 effectiveConfig.update({{ov::intel_npu::compilation_mode.name(), "HostCompile_Interpreter"}});
             }
         }
