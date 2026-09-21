@@ -360,6 +360,19 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
         }
     }
 
+    // HACK: force HostCompile_Interpreter + optimization-level=0 for testing fusion-guided
+    // compilation across many networks. Remove once the testing sweep is done.
+    if (compilerType == ov::intel_npu::CompilerType::PLUGIN) {
+        if (!localConfig.has<COMPILATION_MODE>()) {
+            _logger.info("HACK: forcing NPU_COMPILATION_MODE=HostCompile_Interpreter for fusion-guided testing");
+            localConfig.update(ov::intel_npu::compilation_mode.name(), "HostCompile_Interpreter");
+        }
+        if (!localConfig.has<COMPILATION_MODE_PARAMS>()) {
+            _logger.info("HACK: forcing NPU_COMPILATION_MODE_PARAMS=optimization-level=0 for fusion-guided testing");
+            localConfig.update(ov::intel_npu::compilation_mode_params.name(), "optimization-level=0");
+        }
+    }
+
     // Read the default or explicit compilation mode so automatic and user-selected HostCompile take the same path.
     // HostCompile dynamic models retain their dynamic dimensions for the VM runtime instead of plugin debatching.
     const bool useDynamicGraphForDynamicModel = model->is_dynamic() &&
